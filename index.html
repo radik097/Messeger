@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Noda IM (MVP)</title>
+  <link rel="stylesheet" href="./styles.css"/>
+</head>
+<body>
+  <header>
+    <h1>Noda IM</h1>
+    <div id="status">offline</div>
+  </header>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="identity">Identity</button>
+    <button class="tab" data-tab="contacts">Contacts</button>
+    <button class="tab" data-tab="chat">Chat</button>
+    <button class="tab" data-tab="settings">Settings</button>
+  </nav>
+
+  <main class="tab-content">
+    <section id="identity" class="pane active">
+      <h2>Identity</h2>
+      <div class="subtabs">
+        <button class="subtab active" data-sub="keys">Keys</button>
+        <button class="subtab" data-sub="profile">Profile</button>
+      </div>
+
+      <div class="subpane" data-subpane="keys">
+        <p>Сгенерируйте ключи (ECDSA P-256 для подписи, ECDH P-256 для шифрования).</p>
+        <div class="row">
+          <button id="btn-gen">Сгенерировать ключи</button>
+          <button id="btn-export" disabled>Скопировать public JWK</button>
+        </div>
+        <div id="did-box" class="info-box"></div>
+  <!-- raw JWKs removed for production UI -->
+      </div>
+
+      <div class="subpane hidden" data-subpane="profile">
+        <p>Profile information derived from your public keys.</p>
+        <div class="kv"><label>DID</label><div id="did-val" class="mono"></div></div>
+        <div class="kv"><label>User name (hash of public JWKs)</label><div id="user-name" class="mono"></div>
+          <button id="btn-copy-username">Copy</button>
+        </div>
+        <div class="kv"><label>Instructions</label>
+          <ul>
+            <li><b>DID</b> — ваш публичный идентификатор (derived from id_pub)</li>
+            <li><b>User name</b> — короткий hash(public id JWK + dh JWK), используйте для обмена контактами</li>
+            <li><b>Public JWKs</b> — отправляйте контакту (copy/paste) или через сервер (future)</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section id="contacts" class="pane hidden">
+      <h2>Contacts</h2>
+      <div class="subtabs">
+        <button class="subtab active" data-sub="add">Add</button>
+        <button class="subtab" data-sub="import">Import</button>
+      </div>
+      <div class="subpane" data-subpane="add">
+        <p>Добавьте контакт по DID. Визитка обменяется автоматически через запрос дружбы.</p>
+        <div class="row">
+          <input id="contact-did" placeholder="did:noda:..."/>
+          <button id="btn-request">Add by DID</button>
+        </div>
+
+        <details style="margin-top:8px;">
+          <summary>Расширенно: добавить вручную по DH JWK (необязательно)</summary>
+          <div class="kv">
+            <label>DH JWK (peer)</label>
+            <textarea id="contact-dh" placeholder="DH JWK (peer)"></textarea>
+          </div>
+          <div class="row">
+            <button id="btn-add-contact">Добавить вручную</button>
+          </div>
+        </details>
+
+        <ul id="contact-list"></ul>
+      </div>
+      <div class="subpane hidden" data-subpane="import">
+        <p>Импорт контактов из JSON или paste полного объекта контакта.</p>
+        <textarea id="contact-import" placeholder='[{"did":"did:noda:...","dh_pub_jwk":{...}}]'></textarea>
+        <div class="row"><button id="btn-import">Импортировать</button></div>
+      </div>
+    </section>
+
+    <section id="chat" class="pane hidden">
+      <h2>Chat</h2>
+      <div class="row">
+        <label>Кому (онлайн):</label>
+        <select id="online-list"><option value="">-- выберите --</option></select>
+      </div>
+      <div class="row">
+        <label>Или вручную (DID):</label>
+        <input id="to-did" placeholder="did:noda:..."/>
+      </div>
+      <div id="messages"></div>
+      <div class="row">
+        <input id="msg" placeholder="Сообщение"/>
+        <button id="btn-send">Отправить</button>
+      </div>
+    </section>
+
+    <section id="settings" class="pane hidden">
+      <h2>Settings</h2>
+  <div class="kv"><label>WS URL</label><input id="ws-url" value="ws://127.0.0.1:8765"/></div>
+      <div class="row"><button id="btn-connect">Подключиться</button></div>
+      <p>Описание: подключитесь к nodalib WebSocket gateway.</p>
+      <div class="kv" style="margin-top:12px"><label>Backup / Restore</label>
+        <input id="backup-pass" placeholder="Пароль для бэкапа" type="password"/>
+        <div class="row" style="margin-top:6px">
+          <button id="btn-backup">Экспорт зашифрованного бэкапа</button>
+          <button id="btn-restore">Импорт бэкапа</button>
+        </div>
+        <textarea id="backup-data" placeholder="Здесь появится зашифрованный бэкап или вставьте его для восстановления" style="height:120px;margin-top:8px"></textarea>
+      </div>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
