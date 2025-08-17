@@ -1,0 +1,10 @@
+services:
+  ws:
+    build: .
+    env_file: .env
+    volumes:
+      - imdata:/data
+    ports:
+      - "${PORT:-8765}:${PORT:-8765}"
+volumes:
+  imdata:
