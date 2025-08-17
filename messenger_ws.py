@@ -1,18 +1,33 @@
-import asyncio, json, secrets, sqlite3, time, signal
-from websockets.server import serve
-from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
-from typing import Dict, Any
+import asyncio
+import json
+import os
+import secrets
+import signal
+import sqlite3
+import time
 from base64 import urlsafe_b64decode
 from dataclasses import dataclass
+from typing import Any, Dict
 
-# cryptography: верификация подписи ECDSA P-256 по JWK
+from websockets.exceptions import ConnectionClosedError, ConnectionClosedOK
+from websockets.server import serve
+
+try:
+    import uvloop
+
+    uvloop.install()
+except Exception:  # pragma: no cover
+    pass
+
+from dotenv import load_dotenv
 from cryptography.hazmat.primitives.asymmetric import ec
-from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature
-from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
-from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives import hashes as _hashes
 
-DB_PATH = "im.db"
+load_dotenv()
+
+PORT = int(os.getenv("PORT", "8765"))
+DB_PATH = os.getenv("DB_PATH", "im.db")
 
 
 @dataclass
@@ -58,9 +73,6 @@ def setup_db():
     con.close()
 
 
-from base64 import urlsafe_b64decode
-
-
 def b64u_to_bytes(s: str) -> bytes:
     s = s.replace("-", "+").replace("_", "/")
     pad = "=" * ((4 - len(s) % 4) % 4)
@@ -74,7 +86,6 @@ def jwk_to_ec_pubkey_p256(jwk: dict):
     return pn.public_key()
 
 
-from cryptography.hazmat.primitives import hashes as _hashes
 
 
 def did_from_pubkey(pubkey) -> str:
@@ -134,9 +145,6 @@ async def auth_flow(ws) -> str:
     con.close()
     await ws.send(json.dumps({"type": "READY"}))
     return did
-
-
-from cryptography.hazmat.primitives.asymmetric.utils import encode_dss_signature
 
 
 def verify_ecdsa(pubkey, msg_bytes: bytes, sig_bytes: bytes) -> bool:
@@ -202,7 +210,7 @@ async def broadcast_presence():
 async def handle(ws):
     try:
         did = await auth_flow(ws)
-    except Exception as e:
+    except Exception:
         await ws.close()
         return
     SESSIONS[did] = Session(did, ws, time.time())
@@ -266,7 +274,7 @@ async def main():
         loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
     except Exception:
         pass
-    async with serve(handle, "0.0.0.0", 8765, ping_interval=30, ping_timeout=30):
+    async with serve(handle, "0.0.0.0", PORT, ping_interval=30, ping_timeout=30):
         await stop
 
 
