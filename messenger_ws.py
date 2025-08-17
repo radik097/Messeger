@@ -86,8 +86,6 @@ def jwk_to_ec_pubkey_p256(jwk: dict):
     return pn.public_key()
 
 
-
-
 def did_from_pubkey(pubkey) -> str:
     raw = pubkey.public_bytes(Encoding.X962, PublicFormat.UncompressedPoint)
     digest = _hashes.Hash(_hashes.SHA256())
@@ -274,7 +272,7 @@ async def main():
         loop.add_signal_handler(signal.SIGTERM, stop.set_result, None)
     except Exception:
         pass
-    async with serve(handle, "0.0.0.0", PORT, ping_interval=30, ping_timeout=30):
+    async with serve(handle, "127.0.0.1", PORT, ping_interval=30, ping_timeout=30):
         await stop
 
 

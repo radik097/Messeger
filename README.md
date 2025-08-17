@@ -32,6 +32,18 @@ npm run build
 docker compose up --build
 ```
 
+### Продакшн через Nginx и Let's Encrypt
+
+1. Установите `nginx` и `certbot`.
+2. Разместите [nginx.conf](nginx.conf) и скорректируйте пути к сертификатам.
+3. Получите сертификат:
+   ```bash
+   certbot certonly --standalone -d spfpsfr.online
+   ```
+4. Настройте автообновление: `echo "0 0 * * 0 certbot renew --post-hook 'systemctl reload nginx'" >/etc/cron.d/certbot`.
+5. Запустите `python3 messenger_ws.py` (он слушает только `127.0.0.1:8765`).
+6. Nginx проксирует внешний `wss://spfpsfr.online/assets/chat/socket` к внутреннему `ws://127.0.0.1:8765` и включает заголовки безопасности и лимиты.
+
 ## Подключение клиента
 
 В другой вкладке:
@@ -41,7 +53,7 @@ npm run dev
 # открыть http://127.0.0.1:8081/
 ```
 
-В разделе **Settings** укажите `WS URL` сервера (по умолчанию `ws://127.0.0.1:8765` или адрес удалённого сервера).
+В разделе **Settings** укажите `WS URL` сервера (по умолчанию `wss://spfpsfr.online/assets/chat/socket` или адрес вашего сервера). При недоступности WebSocket клиент попытается подключиться через SSE по `https://<host>/stream`.
 
 ## Первое сообщение
 

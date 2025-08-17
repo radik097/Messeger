@@ -5,6 +5,7 @@ const DB_NAME = 'noda-im';
 const DB_VER = 1;
 
 let WS = null;
+let ES = null; // EventSource fallback
 let ME = { did: null, idKey: null, dhKey: null, idPubJwk: null, dhPubJwk: null };
 let CONTACTS = new Map(); // did -> { dhPubJwk }
 let UI = {};
@@ -271,24 +272,67 @@ async function connectWS() {
   try {
     WS = new WebSocket(url);
   } catch (e) {
-    alert('Не удалось создать WebSocket: ' + e.message);
-    return;
+    console.warn('WS create failed, trying SSE', e);
+    return connectSSE(url);
   }
+  let opened = false;
   WS.onopen = () => {
+    opened = true;
     UI.status.textContent = 'online';
     console.log('WS open -> HELLO', ME.did);
     sendWS({ type: 'HELLO', did: ME.did });
   };
   WS.onclose = () => {
+    if (!opened) {
+      console.warn('WS failed, falling back to SSE');
+      connectSSE(url);
+      return;
+    }
     UI.status.textContent = 'offline';
     if (UI.btnSend) UI.btnSend.disabled = true;
     updateOnlineList([]);
   };
-  WS.onerror = (ev) => { UI.status.textContent = 'error'; console.error('WS error', ev); if (UI.btnSend) UI.btnSend.disabled = true; };
+  WS.onerror = (ev) => {
+    UI.status.textContent = 'error';
+    console.error('WS error', ev);
+    if (UI.btnSend) UI.btnSend.disabled = true;
+  };
   WS.onmessage = onWSMessage;
 }
 
-function sendWS(obj) { WS?.send(JSON.stringify(obj)); }
+function connectSSE(wsUrl) {
+  const base = wsUrl.replace(/^ws/, 'http').replace(/\/assets\/chat\/socket$/, '');
+  const streamUrl = base + '/stream';
+  ES = new EventSource(streamUrl);
+  ES.onopen = () => {
+    UI.status.textContent = 'online';
+    fetch(base + '/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type: 'HELLO', did: ME.did })
+    });
+  };
+  ES.onerror = () => {
+    UI.status.textContent = 'offline';
+    if (UI.btnSend) UI.btnSend.disabled = true;
+  };
+  ES.onmessage = (ev) => {
+    onWSMessage({ data: ev.data });
+  };
+}
+
+function sendWS(obj) {
+  if (WS && WS.readyState === WebSocket.OPEN) {
+    WS.send(JSON.stringify(obj));
+  } else if (ES) {
+    const base = UI.wsUrl.value.trim().replace(/^ws/, 'http').replace(/\/assets\/chat\/socket$/, '');
+    fetch(base + '/send', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(obj)
+    });
+  }
+}
 
 async function onWSMessage(ev) {
   const m = JSON.parse(ev.data);
